@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+import easysnmp
+from easysnmp import Session, exceptions
+import sys
+from time import time,sleep
+
+currentOIDsValues=[]
+previousOIDsValues=[]
+sysUpTimeOID='1.3.6.1.2.1.1.3.0'
+previousReqTime = None
+
+def main(argv):
+    if(len(argv)>=4):
+        sessiondata = argv[0].split(":")
+        if(len(sessiondata)==3):
+            sessionip = sessiondata[0]
+            sessionport = sessiondata[1]
+            sessionCommunity = sessiondata[2]
+            sampleFrequency = float(argv[1])
+            proberSamples = int(argv[2])
+            oidList = [sysUpTimeOID]+argv[3:]
+            proberSession = Session(hostname=sessionip,remote_port=sessionport,community=sessionCommunity,version=2)
+            sampleInterval = 1.0/sampleFrequency
+            timeouts = 0
+            agentReboots = 0
+
+ 
