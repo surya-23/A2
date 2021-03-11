@@ -25,4 +25,56 @@ def main(argv):
             timeouts = 0
             agentReboots = 0
 
- 
+            for sampleNum in (range(0,proberSamples+1)):
+                ratesList = []
+                currentReqTime = time()
+                try:
+                    currentOIDsValues = proberSession.get(oidList)
+                except exceptions.EasySNMPTimeoutError:
+                    print("timeout "+str(timeouts))
+                    timeouts+=1
+                    continue
+                currentRespTime = time()
+
+                if(sampleNum and len(previousOIDsValues)==len(currentOIDsValues)):
+                    timeDifference = currentReqTime - previousReqTime
+                    if currentOIDsValues[0].value < previousOIDsValues[0].value:
+                        print("Agent is rebooting")
+                    elif sampleFrequency<=1:
+                        if timeDifference!=0:
+                            timeDifference = int(timeDifference)  
+                        else:
+                             timeDifference = int(sampleInterval)
+                    for input in range(0, len(oidList)):
+                        if(input == 0):
+                            ratesList.append(int(currentReqTime))
+                        elif(currentOIDsValues[input].snmp_type=="NOSUCHINSTANCE" or previousOIDsValues[input].snmp_type=="NOSUCHINSTANCE"):
+                            ratesList.append(currentOIDsValues[input].value)
+                        elif(int(currentOIDsValues[input].value)>int(previousOIDsValues[input].value)):
+                            valueRate = (int(currentOIDsValues[input].value) - int(previousOIDsValues[input].value))/timeDifference
+                            ratesList.append(int(valueRate))
+                        elif(currentOIDsValues[input].snmp_type == "COUNTER64" and previousOIDsValues[input].snmp_type == "COUNTER64" ):
+                            valueRate = ((2**64+int(currentOIDsValues[input].value)) - int(previousOIDsValues[input].value))/timeDifference
+                            ratesList.append(int(valueRate))
+                        elif(currentOIDsValues[input].snmp_type == "COUNTER" and previousOIDsValues[input].snmp_type == "COUNTER" ):
+                            valueRate = ((2**32+int(currentOIDsValues[input].value)) - int(previousOIDsValues[input].value))/timeDifference
+                            ratesList.append(int(valueRate))
+                    print(' | '.join(map(str,ratesList)))
+                previousReqTime = currentReqTime
+                previousOIDsValues = currentOIDsValues[:]
+                if(sampleInterval > (time() - currentReqTime)):
+                    sleep(sampleInterval - (time()-currentReqTime)) 
+                else:
+                    pass
+            if(timeouts>0):
+                print("Total number of request timeouts "+str(timeouts))
+            if(agentReboots>0):
+                print("Agent is rebooting for "+str(agentReboots)+" samples")
+        else:
+            print("Invalid host session address")
+    else:
+        print("Invalid input arguments")
+    
+if __name__ == "__main__":
+   main(sys.argv[1:])
+
